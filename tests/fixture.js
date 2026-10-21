@@ -1,0 +1,28 @@
+import { FIELDS, DOMAIN } from '../src/model.js';
+export function fixture(prefix = 'purifier', device = 'synthetic-device') {
+  const values = {
+    input_tds: '836', output_tds: '91', connection: 'Local network',
+    lifetime_water: '1250.5', water_saved: '2100', runtime: '42',
+    purification_mode: 'TasteTune 75–125 ppm', fallback_mode: 'RO + UV',
+    tds_threshold: '250', display_sleep: 'off', sleep_schedule: 'on',
+    sleep_start: '03:00:00', sleep_end: '08:00:00', refresh_readings: 'unknown',
+  };
+  const options = ['RO + UV', 'Adaptive', 'TasteTune 50–100 ppm', 'TasteTune 75–125 ppm', 'TasteTune 100–150 ppm', 'Vacay'];
+  const registry = [], states = {};
+  for (const [key, domain] of Object.entries(FIELDS)) {
+    const entity_id = `${domain}.${prefix}_${key}`;
+    registry.push({ entity_id, platform: DOMAIN, device_id: device, unique_id: `${device}_${key}`, disabled_by: null });
+    states[entity_id] = { entity_id, state: values[key], last_updated: '2026-01-01T12:00:00Z', attributes: {
+      friendly_name: `Water purifier ${key.replaceAll('_', ' ')}`,
+      ...(domain === 'select' ? { options: key === 'fallback_mode' ? options.filter(x => !['Adaptive', 'Vacay'].includes(x)) : options } : {}),
+      ...(key.includes('tds') ? { unit_of_measurement: 'mg/L', min: 100, max: 300, step: 1 } : {}),
+      ...(['lifetime_water', 'water_saved'].includes(key) ? { unit_of_measurement: 'L', mapping_status: 'beta' } : {}),
+      ...(key === 'runtime' ? { unit_of_measurement: 'h', mapping_status: 'beta' } : {}),
+    } };
+  }
+  // A button's state is its last press time. 'unknown' before first use is valid.
+  return { registry, states, calls: [], locale: { language: 'en' }, config: { time_zone: 'UTC' },
+    async callWS() { return registry; },
+    async callService(domain, service, data) { this.calls.push({ domain, service, data }); },
+  };
+}

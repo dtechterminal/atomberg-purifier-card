@@ -1,0 +1,6 @@
+{
+  "name": "Atomberg Purifier Card",
+  "filename": "atomberg-purifier-card.js",
+  "render_readme": true,
+  "homeassistant": "2025.3.0"
+}
