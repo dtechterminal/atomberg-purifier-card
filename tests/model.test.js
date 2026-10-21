@@ -26,6 +26,18 @@ test('missing, nonfinite and unavailable measurements are not zero', () => {
   assert.equal(numeric({ state: '0' }), 0);
   assert.equal(numeric({ state: '98.7' }), 98.7);
 });
+test('maps every protocol-key control to its HA entity without relying on its name', () => {
+  const { registry } = fixture();
+  const mode = registry.find(e => e.unique_id === 'synthetic-device_mode');
+  mode.entity_id = 'select.renamed_water_mode';
+  const result = bindings({}, registry).entities;
+  assert.equal(result.purification_mode, 'select.renamed_water_mode');
+  assert.equal(result.display_sleep, 'switch.purifier_display_sleep');
+  assert.equal(result.sleep_schedule, 'switch.purifier_sleep_schedule');
+  assert.equal(result.sleep_start, 'time.purifier_sleep_start');
+  assert.equal(result.sleep_end, 'time.purifier_sleep_end');
+  assert.equal(Object.keys(result).length, 14);
+});
 test('untrusted text is escaped and invalid anchors are rejected', () => {
   assert.equal(escapeHtml('<img onerror="x">'), '&lt;img onerror=&quot;x&quot;&gt;');
   assert.throws(() => validateConfig({ entity: 'switch.fan' }));

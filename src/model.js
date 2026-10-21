@@ -6,6 +6,11 @@ export const FIELDS = {
   display_sleep: 'switch', sleep_schedule: 'switch', sleep_start: 'time',
   sleep_end: 'time', refresh_readings: 'button',
 };
+// Stable integration unique IDs use protocol keys, not translated entity names.
+const UNIQUE_KEYS = {
+  purification_mode: 'mode', display_sleep: 'idle_sleep', sleep_schedule: 'sleep_mode',
+  sleep_start: 'start_utc', sleep_end: 'stop_utc',
+};
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g,
   char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
 export const usable = state => !!state && !['unknown', 'unavailable', ''].includes(state.state);
@@ -29,7 +34,7 @@ export function bindings(config, registry) {
   const entities = {};
   for (const [key, domain] of Object.entries(FIELDS)) {
     const entry = registry.find(e => e.platform === DOMAIN && e.device_id === anchor.device_id &&
-      e.unique_id === prefix + key && !e.disabled_by && e.entity_id.startsWith(domain + '.'));
+      e.unique_id === prefix + (UNIQUE_KEYS[key] || key) && !e.disabled_by && e.entity_id.startsWith(domain + '.'));
     if (entry) entities[key] = entry.entity_id;
   }
   return { entities };

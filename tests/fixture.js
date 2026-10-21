@@ -9,9 +9,12 @@ export function fixture(prefix = 'purifier', device = 'synthetic-device') {
   };
   const options = ['RO + UV', 'Adaptive', 'TasteTune 50–100 ppm', 'TasteTune 75–125 ppm', 'TasteTune 100–150 ppm', 'Vacay'];
   const registry = [], states = {};
+  // Independent contract from the integration's entity constructors.
+  const uniqueKeys = { purification_mode: 'mode', display_sleep: 'idle_sleep',
+    sleep_schedule: 'sleep_mode', sleep_start: 'start_utc', sleep_end: 'stop_utc' };
   for (const [key, domain] of Object.entries(FIELDS)) {
     const entity_id = `${domain}.${prefix}_${key}`;
-    registry.push({ entity_id, platform: DOMAIN, device_id: device, unique_id: `${device}_${key}`, disabled_by: null });
+    registry.push({ entity_id, platform: DOMAIN, device_id: device, unique_id: `${device}_${uniqueKeys[key] || key}`, disabled_by: null });
     states[entity_id] = { entity_id, state: values[key], last_updated: '2026-01-01T12:00:00Z', attributes: {
       friendly_name: `Water purifier ${key.replaceAll('_', ' ')}`,
       ...(domain === 'select' ? { options: key === 'fallback_mode' ? options.filter(x => !['Adaptive', 'Vacay'].includes(x)) : options } : {}),
