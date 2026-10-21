@@ -3,6 +3,8 @@ export function fixture(prefix = 'purifier', device = 'synthetic-device') {
   const values = {
     input_tds: '836', output_tds: '91', connection: 'Local network',
     lifetime_water: '1250.5', water_saved: '2100', runtime: '42',
+    pre_filter_life: '78', sediment_filter_life: '76', pre_carbon_filter_life: '73',
+    ro_membrane_life: '65', uf_membrane_life: '98', uv_lamp_life: '99', pump_life: '95', alkaliser_life: '62',
     purification_mode: 'TasteTune 75–125 ppm', fallback_mode: 'RO + UV',
     tds_threshold: '250', display_sleep: 'off', sleep_schedule: 'on',
     sleep_start: '03:00:00', sleep_end: '08:00:00', refresh_readings: 'unknown',
@@ -17,6 +19,8 @@ export function fixture(prefix = 'purifier', device = 'synthetic-device') {
     registry.push({ entity_id, platform: DOMAIN, device_id: device, unique_id: `${device}_${uniqueKeys[key] || key}`, disabled_by: null });
     states[entity_id] = { entity_id, state: values[key], last_updated: '2026-01-01T12:00:00Z', attributes: {
       friendly_name: `Water purifier ${key.replaceAll('_', ' ')}`,
+      ...(key === 'connection' ? { last_successful_read: '2026-01-01T12:00:10Z', poll_interval_seconds: 10 } : {}),
+      ...(key.endsWith('_life') ? { unit_of_measurement: '%', calculation: 'remaining_capacity' } : {}),
       ...(domain === 'select' ? { options: key === 'fallback_mode' ? options.filter(x => !['Adaptive', 'Vacay'].includes(x)) : options } : {}),
       ...(key.includes('tds') ? { unit_of_measurement: 'mg/L', min: 100, max: 300, step: 1 } : {}),
       ...(['lifetime_water', 'water_saved'].includes(key) ? { unit_of_measurement: 'L', mapping_status: 'beta' } : {}),

@@ -36,7 +36,7 @@ test('maps every protocol-key control to its HA entity without relying on its na
   assert.equal(result.sleep_schedule, 'switch.purifier_sleep_schedule');
   assert.equal(result.sleep_start, 'time.purifier_sleep_start');
   assert.equal(result.sleep_end, 'time.purifier_sleep_end');
-  assert.equal(Object.keys(result).length, 14);
+  assert.equal(Object.keys(result).filter(key => !key.endsWith('_life')).length, 14);
 });
 test('untrusted text is escaped and invalid anchors are rejected', () => {
   assert.equal(escapeHtml('<img onerror="x">'), '&lt;img onerror=&quot;x&quot;&gt;');

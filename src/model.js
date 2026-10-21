@@ -1,10 +1,17 @@
 export const DOMAIN = 'atomberg_purifier_local';
+export const FILTERS = [
+  ['pre_filter_life', 'Pre-filter'], ['sediment_filter_life', 'Inline sediment'],
+  ['pre_carbon_filter_life', 'Pre-carbon'], ['ro_membrane_life', 'RO membrane'],
+  ['uf_membrane_life', 'UF membrane'], ['uv_lamp_life', 'UV lamp'],
+  ['pump_life', 'Pump'], ['alkaliser_life', 'Alkaliser + taste'],
+];
 export const FIELDS = {
   input_tds: 'sensor', output_tds: 'sensor', connection: 'sensor',
   lifetime_water: 'sensor', water_saved: 'sensor', runtime: 'sensor',
   purification_mode: 'select', fallback_mode: 'select', tds_threshold: 'number',
   display_sleep: 'switch', sleep_schedule: 'switch', sleep_start: 'time',
   sleep_end: 'time', refresh_readings: 'button',
+  ...Object.fromEntries(FILTERS.map(([key]) => [key, 'sensor'])),
 };
 // Stable integration unique IDs use protocol keys, not translated entity names.
 const UNIQUE_KEYS = {

@@ -8,6 +8,7 @@ Your Intellon, at home in Home Assistant. A dark dashboard card inspired by the 
 
 - **Overview:** input/output TDS, current purification mode, local connection status and refresh.
 - **Controls:** purification mode, fallback mode, TDS threshold, display sleep and sleep schedule.
+- **Filters:** eight remaining-life estimates, with progress bars and Home Assistant history.
 - **Insights:** lifetime water, estimated water saved and runtime, clearly labelled **Beta**.
 - A visual card editor, automatic device discovery, phone-friendly layout and keyboard controls.
 - No cloud account, CDN, remote fonts, app assets or external image requests. The artwork is bundled with the card.
@@ -18,7 +19,7 @@ This is an independent community project, not an official Atomberg app. It is a 
 
 The card displays and controls the entities from [Atomberg Water Purifier Local](https://github.com/dtechterminal/ha-atomberg-water-purifier-local). Follow that repository's setup instructions first.
 
-Use integration **0.2.0 or newer** for the Insights readings. The card also works with 0.1.0; the missing analytics show a dash.
+Use integration **0.3.0 or newer** for filter life and automatic readings every 10 seconds. Older versions still work; readings they do not provide show a dash.
 
 ## 2. Install this card with HACS
 
@@ -52,7 +53,7 @@ Resource management may require **Advanced mode** in your Home Assistant profile
 - Tap either TDS reading to open its Home Assistant history.
 - Open **Controls** to change settings. Changes are confirmed by the integration; failures are shown on the card.
 - Enable **Sleep schedule** before editing its times. Times use Home Assistant's configured time zone.
-- Tap **Refresh** for a fresh local reading.
+- Readings refresh automatically every **10 seconds**. The bottom of the card shows the last successful read time. Tap **Refresh** to check immediately.
 - An unavailable reading shows **—**. Controls are disabled when the purifier is unavailable.
 
 ### About Insights and filter health
@@ -61,7 +62,11 @@ The beta analytics match the values displayed by the W2 app, but comparison thro
 
 Water saved uses [Atomberg's estimate](https://developer.atomberg-iot.com/reference/get-device-analytics) against a 25% recovery purifier. It is not a direct measurement of water sent to drain. Long-term statistics for these beta sensors are intentionally withheld while counter/reset behavior is checked; ordinary Home Assistant history is available.
 
-Filter-life percentages and daily cloud charts are not currently decoded by the local integration. The card does not invent them or infer safe drinking water from TDS. There is no tank-level gauge or fake filling animation.
+Open **Filters** for pre-filter, inline sediment, pre-carbon, RO, UF, UV lamp, pump and alkaliser life. Tap a component to see its Home Assistant history. These estimates use the purifier’s local water/runtime counters and Atomberg’s capacity formulas. They assume all components are original; replacement history and the app’s flow-performance adjustments are not included. If you have replaced a component, its estimate will be inaccurate. [How the estimates work](https://github.com/dtechterminal/ha-atomberg-water-purifier-local/blob/main/docs/filter-life.md).
+
+Daily cloud charts are unavailable. TDS and filter-life estimates do not establish drinking-water safety.
+
+![Filters tab with synthetic readings](docs/filters.png)
 
 ## Optional YAML
 
@@ -93,7 +98,7 @@ npm run test:browser
 npm run dev
 ```
 
-Open `http://127.0.0.1:8766/demo/`. The interactive preview uses synthetic readings and never calls a real purifier. Tests cover device selection, renamed entities, each service type, failed commands, unavailable devices, visual editing and mobile layouts.
+Open `http://127.0.0.1:8766/demo/`. The interactive preview uses synthetic readings and never calls a real purifier. Tests cover device selection, renamed entities, each service type, failed commands, unavailable devices, filter estimates, fresh read timestamps, visual editing and mobile layouts.
 
 The release is one self-contained JavaScript module. The original vector purifier illustration is defined in `src/art.js`. No reverse-engineered app binaries, screenshots, credentials or private device recordings are included.
 

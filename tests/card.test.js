@@ -47,6 +47,39 @@ test('a never-pressed refresh button still works', async () => {
   assert.equal(button.disabled, false); button.click(); await tick();
   assert.deepEqual(hass.calls[0], { domain: 'button', service: 'press', data: { entity_id: 'button.purifier_refresh_readings' } });
 });
+test('filter life comes from HA entities and opens the correct component history', async () => {
+  const card = await create();
+  card.shadowRoot.querySelector('[data-tab="filters"]').click();
+  assert.equal(card.shadowRoot.querySelectorAll('.filter-item').length, 8);
+  assert.match(card.shadowRoot.querySelector('[data-info="ro_membrane_life"]').textContent, /65%/);
+  assert.match(card.shadowRoot.textContent, /Estimated remaining life/);
+  let detail;
+  card.addEventListener('hass-more-info', event => { detail = event.detail; });
+  card.shadowRoot.querySelector('[data-info="ro_membrane_life"]').click();
+  assert.equal(detail.entityId, 'sensor.purifier_ro_membrane_life');
+});
+test('unknown filter life is a dash and never a filled healthy bar', async () => {
+  const hass = fixture();
+  hass.states['sensor.purifier_pre_filter_life'].state = 'unavailable';
+  hass.states['sensor.purifier_ro_membrane_life'].state = '101';
+  const card = await create(hass);
+  card.shadowRoot.querySelector('[data-tab="filters"]').click();
+  for (const key of ['pre_filter_life', 'ro_membrane_life']) {
+    const item = card.shadowRoot.querySelector(`[data-info="${key}"]`);
+    assert.match(item.textContent, /—/);
+    assert.equal(item.querySelector('.filter-track').children.length, 0);
+  }
+  assert.match(card.shadowRoot.querySelector('[data-info="uv_lamp_life"]').textContent, /99%/);
+});
+test('last read advances when a poll succeeds without changing the water reading', async () => {
+  const hass = fixture(), card = await create(hass);
+  assert.match(card.shadowRoot.querySelector('.updated').textContent, /12:00:10/);
+  hass.states['sensor.purifier_connection'].attributes.last_successful_read = '2026-01-01T12:00:20Z';
+  card.hass = hass;
+  assert.match(card.shadowRoot.querySelector('.updated').textContent, /Last read 12:00:20/);
+  assert.match(card.shadowRoot.textContent, /every 10 seconds/);
+  assert.match(card.shadowRoot.querySelector('.reading.output').textContent, /91/);
+});
 test('service errors are visible and do not fabricate success or update state', async () => {
   const hass = fixture(); hass.callService = async () => { throw new Error('Device did not confirm'); };
   const card = await create(hass); card.shadowRoot.querySelector('[data-tab="controls"]').click();

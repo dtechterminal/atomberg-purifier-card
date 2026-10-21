@@ -1,8 +1,8 @@
-import { DOMAIN, FIELDS, anchors, bindings, escapeHtml as esc, usable, numeric, validateConfig } from './model.js';
+import { DOMAIN, FIELDS, FILTERS, anchors, bindings, escapeHtml as esc, usable, numeric, validateConfig } from './model.js';
 import { styles } from './styles.js';
 import { drop, refresh, purifier } from './art.js';
 
-const VERSION = '0.1.1';
+const VERSION = '0.2.0';
 class AtombergPurifierCard extends HTMLElement {
   constructor() {
     super();
@@ -19,7 +19,7 @@ class AtombergPurifierCard extends HTMLElement {
       const tab = event.target.closest('[role=tab]');
       if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
-      const tabs = ['overview', 'controls', ...(this._config.show_analytics ? ['insights'] : [])];
+      const tabs = this._tabs();
       const index = tabs.indexOf(this._tab);
       const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
         : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
@@ -56,6 +56,7 @@ class AtombergPurifierCard extends HTMLElement {
     finally { this._loading = false; this._render(); }
   }
   _state(key) { return this._hass?.states[this._entities[key]]; }
+  _tabs() { return ['overview', 'controls', 'filters', ...(this._config.show_analytics ? ['insights'] : [])]; }
   _available(key) {
     const state = this._state(key);
     // A button is "unknown" until its first press; it is still usable.
@@ -128,7 +129,22 @@ class AtombergPurifierCard extends HTMLElement {
     return `<div class="hero"><span class="hero-caption">DESIGNED AROUND YOUR WATER</span>${illustration}<span class="hero-code">W2 / INTELLON</span></div>
       <div class="quality">${['input_tds', 'output_tds'].map((key, i) => `<button class="reading ${i ? 'output' : ''}" data-info="${key}" aria-label="${i ? 'Output' : 'Input'} TDS history">
         <div class="label">${i ? 'Purified water' : 'Incoming water'}</div><div class="reading-number">${esc(this._value(key))}<span class="unit">${this._unit(key, 'mg/L')}</span></div><div class="label">${i ? 'Output' : 'Input'} TDS ↗</div></button>`).join('')}</div>
-      <button class="mode-row" data-tab="controls" aria-label="Change purification mode"><span class="mode-symbol">✳</span><span class="mode-text"><span class="label">Purification mode</span><div class="mode-name">${esc(this._available('purification_mode') ? this._state('purification_mode').state : 'Unavailable')}</div></span><span class="chevron">›</span></button>`;
+      <button class="mode-row" data-tab="controls" aria-label="Change purification mode"><span class="mode-symbol">✳</span><span class="mode-text"><span class="label">Purification mode</span><div class="mode-name">${esc(this._available('purification_mode') ? this._state('purification_mode').state : 'Unavailable')}</div></span><span class="chevron">›</span></button>
+      <button class="filter-link" data-tab="filters"><span>Check filter life</span><span>8 components <span class="chevron">›</span></span></button>`;
+  }
+  _filters() {
+    const available = FILTERS.some(([key]) => this._state(key));
+    return `<div class="intro"><div><h3>Care, at a glance.</h3><p>Estimated remaining life</p></div><span class="beta">Local</span></div>
+      ${!available ? '<div class="health-note">Update Atomberg Water Purifier Local to 0.3.0 or later, restart Home Assistant, then reload this page to see filter life.</div>' : ''}
+      <div class="filter-grid">${FILTERS.map(([key, title], index) => {
+        const number = numeric(this._state(key));
+        const life = number !== null && number <= 100 ? number : null;
+        return `<button class="filter-item ${life !== null && life <= 20 ? 'low' : ''}" data-info="${key}" aria-label="${title}: ${life === null ? 'unavailable' : `${life}% estimated life remaining`}">
+          <span class="filter-index">${String(index + 1).padStart(2, '0')}</span><span class="filter-name">${title}</span>
+          <span class="filter-value">${life === null ? '—' : esc(life)}${life === null ? '' : '<small>%</small>'}</span>
+          <span class="filter-track" aria-hidden="true">${life === null ? '' : `<span style="width:${life}%"></span>`}</span></button>`;
+      }).join('')}</div>
+      <details><summary>How filter life is estimated</summary><p>Calculated from your purifier’s water and runtime counters using Atomberg’s capacity formulas. These readings assume the original filters, UV lamp and pump.</p><p>Past replacements and the app’s flow-performance adjustments are not included. If a component has been replaced, its estimate will be inaccurate. A dash means no reading is available.</p></details>`;
   }
   _controls() {
     const scheduleOn = this._state('sleep_schedule')?.state === 'on';
@@ -150,7 +166,7 @@ class AtombergPurifierCard extends HTMLElement {
       <div class="metric-grid"><button class="metric" data-info="lifetime_water"><div class="label">Lifetime water ↗</div><div class="metric-value">${esc(this._value('lifetime_water', 1))}<span class="unit">${this._unit('lifetime_water', 'L')}</span></div></button>
       <button class="metric" data-info="runtime"><div class="label">Purifier runtime ↗</div><div class="metric-value">${esc(this._value('runtime', 1))}<span class="unit">${this._unit('runtime', 'h')}</span></div></button></div>
       <details><summary>About these readings</summary><p>These beta readings match the W2 app. Comparison through a full refill cycle is still pending. They are lifetime device counters, not a measure of what you just dispensed.</p><p>Water saved is Atomberg’s estimate against a 25% recovery purifier: RO litres × 1.5 + UF litres × 3. Missing readings are shown as a dash. Update the local integration to version 0.2.0 or later to get these sensors.</p></details>
-      <div class="health-note"><strong>Filter health</strong>Filter percentages are not available through this integration yet. Check the Atomberg app for filter life.</div>`;
+      <button class="filter-link" data-tab="filters"><span>View filter life</span><span class="chevron">›</span></button>`;
   }
   _render() {
     if (!this._config || !this._hass) return;
@@ -160,16 +176,17 @@ class AtombergPurifierCard extends HTMLElement {
     const resolution = bindings(this._config, this._registry || []);
     this._entities = resolution.entities;
     const connected = this._available('connection') && this._available('output_tds');
-    const updated = this._state('connection')?.last_updated || this._state('output_tds')?.last_updated;
+    const lastRead = this._state('connection')?.attributes?.last_successful_read;
+    const updated = lastRead || this._state('output_tds')?.last_updated;
     const date = updated ? new Date(updated) : null;
-    const time = date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(this._hass.locale?.language || 'en', { hour: 'numeric', minute: '2-digit', timeZone: this._hass.config?.time_zone }).format(date) : '—';
+    const time = date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(this._hass.locale?.language || 'en', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: this._hass.config?.time_zone }).format(date) : '—';
     let body;
     if (!this._registry) body = `<div class="waiting">${esc(this._registryError || 'Finding your purifier…')}${this._registryError ? '<br><button class="retry" data-action="retry">Try again</button>' : ''}</div>`;
     else if (resolution.reason) body = `<div class="content"><div class="empty"><strong>A home for your purifier.</strong>${esc(resolution.reason)}<br><button class="retry" data-action="retry">Find purifier</button></div></div>`;
     else body = `${!connected ? '<div class="offline-banner">Purifier unavailable. Check its power, Wi-Fi and local connection to Home Assistant.</div>' : ''}
-      <nav class="tabs" role="tablist" aria-label="Purifier pages">${['overview', 'controls', ...(this._config.show_analytics ? ['insights'] : [])].map(tab => `<button class="tab" id="tab-${tab}" role="tab" aria-selected="${tab === this._tab}" aria-controls="page" tabindex="${tab === this._tab ? 0 : -1}" data-tab="${tab}">${tab[0].toUpperCase() + tab.slice(1)}</button>`).join('')}</nav>
-      <section class="content" id="page" role="tabpanel" aria-labelledby="tab-${this._tab}">${this._tab === 'controls' ? this._controls() : this._tab === 'insights' ? this._insights() : this._overview()}
-      <div class="footer"><span class="updated">${connected ? 'Local connection' : 'Connection unavailable'}<br>Last change ${esc(time)}</span><button class="refresh ${this._busy ? 'spinning' : ''}" data-action="refresh" aria-label="Refresh readings" ${this._disabled('refresh_readings') ? 'disabled' : ''}>${refresh}<span>${this._busy ? 'Working…' : 'Refresh'}</span></button></div></section>`;
+      <nav class="tabs" role="tablist" aria-label="Purifier pages">${this._tabs().map(tab => `<button class="tab" id="tab-${tab}" role="tab" aria-selected="${tab === this._tab}" aria-controls="page" tabindex="${tab === this._tab ? 0 : -1}" data-tab="${tab}">${tab[0].toUpperCase() + tab.slice(1)}</button>`).join('')}</nav>
+      <section class="content" id="page" role="tabpanel" aria-labelledby="tab-${this._tab}">${this._tab === 'controls' ? this._controls() : this._tab === 'filters' ? this._filters() : this._tab === 'insights' ? this._insights() : this._overview()}
+      <div class="footer"><span class="updated">${connected ? (lastRead ? 'Auto-refresh · every 10 seconds' : 'Local connection') : 'Connection unavailable'}<br>${lastRead ? 'Last read' : 'Last change'} ${esc(time)}</span><button class="refresh ${this._busy ? 'spinning' : ''}" data-action="refresh" aria-label="Refresh readings" ${this._disabled('refresh_readings') ? 'disabled' : ''}>${refresh}<span>${this._busy ? 'Working…' : 'Refresh'}</span></button></div></section>`;
     this.shadowRoot.innerHTML = `<style>${styles}</style><ha-card><header><span class="mark">${drop}</span><div class="identity"><div class="eyebrow">ATOMBERG · WATER PURIFIER</div><h2>${esc(this._config.title)}</h2></div><span class="connection ${connected ? '' : 'offline'}"><span class="dot"></span>${connected ? 'Local' : 'Offline'}</span></header>${this._error ? `<div class="message" role="alert">${esc(this._error)}</div>` : ''}${this._notice ? `<div class="message notice" role="status">${esc(this._notice)}</div>` : ''}${body}</ha-card>`;
     if (focus && !this._busy) {
       const input = this.shadowRoot.querySelector(`[data-control="${focus}"]`);

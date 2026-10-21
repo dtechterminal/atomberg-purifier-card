@@ -22,6 +22,12 @@ test('overview, all control types, analytics, error handling and visual editor',
   await expect(page.locator('#events')).toContainText('07:30:00');
   await page.getByRole('switch',{name:'Sleep schedule',exact:true}).uncheck();
   await expect(page.getByLabel('Sleep starts',{exact:true})).toBeDisabled();
+  await page.getByRole('tab',{name:'Filters'}).click();
+  await expect(page.locator('.filter-item')).toHaveCount(8);
+  await expect(page.getByRole('button',{name:'Pre-filter: 78% estimated life remaining',exact:true})).toBeVisible();
+  await page.getByText('How filter life is estimated',{exact:true}).click();
+  await expect(page.getByText(/Past replacements and the app/)).toBeVisible();
+  await expect(page.locator('.updated')).toContainText('every 10 seconds');
   await page.getByRole('tab',{name:'Insights'}).click();
   await expect(page.locator('atomberg-purifier-card')).toContainText('2,100');
   await page.getByText('About these readings',{exact:true}).click();
@@ -42,7 +48,7 @@ for (const width of [320,390,768,1440]) test(`fits viewport ${width}px`, async (
   await page.setViewportSize({width,height:1000});
   await page.goto('/demo/?card');
   await expect(page.getByRole('button',{name:'Output TDS history'})).toBeVisible();
-  for (const name of ['Overview','Controls','Insights']) {
+  for (const name of ['Overview','Controls','Filters','Insights']) {
     await page.getByRole('tab',{name,exact:true}).click();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     const overflow=await page.locator('atomberg-purifier-card').evaluate(e=>{
