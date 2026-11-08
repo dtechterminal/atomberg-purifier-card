@@ -2,7 +2,7 @@ import { DOMAIN, FIELDS, FILTERS, anchors, bindings, escapeHtml as esc, usable, 
 import { styles } from './styles.js';
 import { drop, refresh, purifier } from './art.js';
 
-const VERSION = '0.2.0';
+const VERSION = '0.2.1';
 class AtombergPurifierCard extends HTMLElement {
   constructor() {
     super();
